@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rentabilidad por Producto — EcomBoost</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Bricolage+Grotesque:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -827,8 +828,11 @@ function calc() {
 }
 
 
-// ── SAVE / LOAD ──
-const STORAGE_KEY = 'ecomboost_products_v2';
+// ── SUPABASE ──
+const _sb = supabase.createClient(
+  'https://fiitlunfcpnjtgwobxxe.supabase.co',
+  'sb_publishable_wM-RVan2_82bwXzpMSI3Mw_kM0JGJ7A'
+);
 
 function getFields() {
   const ids = ['precio','cantidad','costo_prod','envio','packaging','otros_fijos',
@@ -846,45 +850,39 @@ function setFields(data) {
   calc();
 }
 
-function loadList() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }
-  catch(e) { return []; }
-}
-
-function saveList(list) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
-}
-
-function saveProduct() {
+async function saveProduct() {
   const name = document.getElementById('product-name').value.trim();
   if (!name) { document.getElementById('product-name').focus(); return; }
-  const list = loadList();
-  const idx = list.findIndex(p => p.name === name);
-  const entry = { name, data: getFields(), savedAt: new Date().toLocaleDateString('es-AR') };
-  if (idx >= 0) list[idx] = entry; else list.unshift(entry);
-  saveList(list);
+  const saved_at = new Date().toLocaleDateString('es-AR');
+  const { error } = await _sb.from('products').upsert(
+    { name, data: getFields(), saved_at },
+    { onConflict: 'name' }
+  );
+  if (error) { showToast('Error al guardar'); console.error(error); return; }
   renderSaved();
   showToast('✓ Guardado: ' + name);
 }
 
-function loadProduct(name) {
-  const entry = loadList().find(p => p.name === name);
-  if (!entry) return;
-  setFields(entry.data);
+async function loadProduct(name) {
+  const { data, error } = await _sb.from('products').select('*').eq('name', name).single();
+  if (error || !data) return;
+  setFields(data.data);
   document.getElementById('product-name').value = name;
   showToast('↓ Cargado: ' + name);
 }
 
-function deleteProduct(name) {
-  const updated = loadList().filter(p => p.name !== name);
-  saveList(updated);
+async function deleteProduct(name) {
+  await _sb.from('products').delete().eq('name', name);
   renderSaved();
 }
 
-function renderSaved() {
-  const list = loadList();
+async function renderSaved() {
   const el = document.getElementById('saved-list');
   const countEl = document.getElementById('save-count');
+  el.innerHTML = '<div class="saved-empty" style="color:var(--gray-400);padding:1rem 0;text-align:center;font-size:12px;">Cargando...</div>';
+
+  const { data: list, error } = await _sb.from('products').select('*').order('saved_at', { ascending: false });
+  if (error || !list) { el.innerHTML = '<div class="saved-empty">Error al cargar</div>'; return; }
 
   if (list.length > 0) {
     countEl.textContent = list.length;
@@ -904,7 +902,7 @@ function renderSaved() {
     return `<div class="saved-item">
       <div class="saved-item-info">
         <div class="saved-item-name">${p.name}</div>
-        <div class="saved-item-meta">${precio}${precio ? ' · ' : ''}${p.savedAt}</div>
+        <div class="saved-item-meta">${precio}${precio ? ' · ' : ''}${p.saved_at}</div>
       </div>
       <div class="saved-item-actions">
         <button class="btn-load" onclick="loadProduct('${nameSafe}')">Cargar</button>
