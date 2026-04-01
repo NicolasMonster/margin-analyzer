@@ -507,9 +507,12 @@ hr.sep { border: none; border-top: 1px solid var(--gray-200); margin: 0.9rem 0 0
   <div class="page-sub">Ganancia neta, ROAS mínimo e inversión Meta — todo en tiempo real</div>
 
   <div class="product-name-bar">
-    <div class="product-name-wrap">
-      <span class="product-name-adorn">Producto</span>
-      <input type="text" id="product-name" placeholder="Nombre del producto (ej: Ruby 3 bodys)..." maxlength="60" oninput="syncName()">
+    <div style="display:flex; gap:8px; align-items:stretch;">
+      <div class="product-name-wrap" style="flex:1;">
+        <span class="product-name-adorn">Producto</span>
+        <input type="text" id="product-name" placeholder="Nombre del producto (ej: Ruby 3 bodys)..." maxlength="60">
+      </div>
+      <button class="save-action" onclick="saveProduct()" style="height:44px; padding:0 20px; font-size:14px; border-radius:10px;">Guardar</button>
     </div>
   </div>
 
@@ -693,11 +696,6 @@ hr.sep { border: none; border-top: 1px solid var(--gray-200); margin: 0.9rem 0 0
       <button class="save-toggle" id="save-toggle" onclick="toggleSave()">Mostrar ▾</button>
     </div>
     <div class="save-body collapsed" id="save-body">
-      <div class="save-row">
-        <input class="save-input" id="sp-name" type="text" placeholder="Nombre del producto (ej: Ruby 3 bodys)..." maxlength="50">
-        <button class="save-action" onclick="saveProduct()">Guardar</button>
-      </div>
-      <div class="saved-label">Guardados</div>
       <div class="saved-list" id="saved-list"></div>
       <div id="toast-area"></div>
     </div>
@@ -829,11 +827,6 @@ function calc() {
 }
 
 
-function syncName() {
-  const name = document.getElementById('product-name').value.trim();
-  document.getElementById('sp-name').value = name;
-}
-
 // ── SAVE / LOAD ──
 const STORAGE_KEY = 'ecomboost_products_v2';
 
@@ -863,16 +856,13 @@ function saveList(list) {
 }
 
 function saveProduct() {
-  const topName = document.getElementById('product-name').value.trim();
-  if (topName) document.getElementById('sp-name').value = topName;
-  const name = document.getElementById('sp-name').value.trim();
-  if (!name) { document.getElementById('sp-name').focus(); return; }
+  const name = document.getElementById('product-name').value.trim();
+  if (!name) { document.getElementById('product-name').focus(); return; }
   const list = loadList();
   const idx = list.findIndex(p => p.name === name);
   const entry = { name, data: getFields(), savedAt: new Date().toLocaleDateString('es-AR') };
   if (idx >= 0) list[idx] = entry; else list.unshift(entry);
   saveList(list);
-  document.getElementById('sp-name').value = '';
   renderSaved();
   showToast('✓ Guardado: ' + name);
 }
@@ -881,7 +871,6 @@ function loadProduct(name) {
   const entry = loadList().find(p => p.name === name);
   if (!entry) return;
   setFields(entry.data);
-  document.getElementById('sp-name').value = name;
   document.getElementById('product-name').value = name;
   showToast('↓ Cargado: ' + name);
 }
@@ -944,7 +933,7 @@ function showToast(msg) {
   setTimeout(() => { t.remove(); }, 2500);
 }
 
-document.getElementById('sp-name').addEventListener('keydown', e => {
+document.getElementById('product-name').addEventListener('keydown', e => {
   if (e.key === 'Enter') saveProduct();
 });
 
